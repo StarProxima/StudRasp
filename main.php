@@ -8,135 +8,127 @@ $mysql_database = "rustamxa_timetable"; // имя базы данных
 // ----------------------------------------------------------
 // например ...chat.php?action=select
 //-----------------------------------------------------------
-if (isset($_GET["action"])) { 
-    $action = $_GET['action'];
-
-    if ($action == "select")
-    {
-        if (isset($_GET["data"])) { 
-            $data = $_GET['data'];
-        }
-    }
-
+if (isset($_POST["action"])) { 
+    $action = $_POST['action'];
 
     if ($action == "registration")
     {
-        if (isset($_GET["login"])) { 
-            $login = $_GET['login'];
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
         }
-        if (isset($_GET["password"])) { 
-            $password = $_GET['password'];
+        if (isset($_POST["password"])) { 
+            $password = $_POST['password'];
         }
-        if (isset($_GET["email"])) { 
-            $email = $_GET['email'];
+        if (isset($_POST["email"])) { 
+            $email = $_POST['email'];
         }
     }
     else if ($action == "authentication")
     {
-        if (isset($_GET["login"])) { 
-            $login = $_GET['login'];
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
         }
-        if (isset($_GET["auth_code"])) { 
-            $auth_code = $_GET['auth_code'];
+        if (isset($_POST["auth_code"])) { 
+            $auth_code = $_POST['auth_code'];
         }
     }
     else if ($action == "send_confirmation_email")
     {
-        if (isset($_GET["login"])) { 
-            $login = $_GET['login'];
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
         }
-        if (isset($_GET["session"])) { 
-            $session = $_GET['session'];
+        if (isset($_POST["session"])) { 
+            $session = $_POST['session'];
         }
     }
     else if ($action == "check_account_confirmation")
     {
-        if (isset($_GET["login"])) { 
-            $login = $_GET['login'];
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
         }
-        if (isset($_GET["session"])) { 
-            $session = $_GET['session'];
+        if (isset($_POST["session"])) { 
+            $session = $_POST['session'];
         }
     }
     else if ($action == "authorization")
     {
-        if (isset($_GET["login"])) { 
-            $login = $_GET['login'];
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
         }
-        if (isset($_GET["password"])) { 
-            $password = $_GET['password'];
+        if (isset($_POST["password"])) { 
+            $password = $_POST['password'];
         }
     }
     else if ($action == "get_my_timetables")
     {
-        if (isset($_GET["login"])) { 
-            $login = $_GET['login'];
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
         }
-        if (isset($_GET["session"])) { 
-            $session = $_GET['session'];
+        if (isset($_POST["session"])) { 
+            $session = $_POST['session'];
         }
     }
     else if ($action == "get_saved_timetables")
     {
-        if (isset($_GET["login"])) { 
-            $login = $_GET['login'];
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
         }
-        if (isset($_GET["session"])) { 
-            $session = $_GET['session'];
+        if (isset($_POST["session"])) { 
+            $session = $_POST['session'];
         }
     }
     else if ($action == "get_timetable")
     {
-        if (isset($_GET["index"])) { 
-            $index = $_GET['index'];
+        if (isset($_POST["index"])) { 
+            $index = $_POST['index'];
         }
-        if (isset($_GET["login"])) { 
-            $login = $_GET['login'];
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
         }
     }
     else if ($action == "update_timetable")
     {
-        if (isset($_GET["login"])) { 
-            $login = $_GET['login'];
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
         }
-        if (isset($_GET["session"])) { 
-            $session = $_GET['session'];
+        if (isset($_POST["session"])) { 
+            $session = $_POST['session'];
         }
-        if (isset($_GET["index"])) { 
-            $index = $_GET['index'];
+        if (isset($_POST["index"])) { 
+            $index = $_POST['index'];
         }
-        if (isset($_GET["json"])) { 
-            $json = $_GET['json'];
+        if (isset($_POST["json"])) { 
+            $json = $_POST['json'];
         }
     }
     else if ($action == "create_timetable")
     {
-        if (isset($_GET["login"])) { 
-            $login = $_GET['login'];
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
         }
-        if (isset($_GET["session"])) { 
-            $session = $_GET['session'];
+        if (isset($_POST["session"])) { 
+            $session = $_POST['session'];
         }
     }
     else if ($action == "delete_timetable")
     {
-        if (isset($_GET["login"])) { 
-            $login = $_GET['login'];
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
         }
-        if (isset($_GET["session"])) { 
-            $session = $_GET['session'];
+        if (isset($_POST["session"])) { 
+            $session = $_POST['session'];
         }
-        if (isset($_GET["index"])) { 
-            $index = $_GET['index'];
+        if (isset($_POST["index"])) { 
+            $index = $_POST['index'];
         }
     }
     else if ($action == "check_session")
     {
-        if (isset($_GET["login"])) { 
-            $login = $_GET['login'];
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
         }
-        if (isset($_GET["session"])) { 
-            $session = $_GET['session'];
+        if (isset($_POST["session"])) { 
+            $session = $_POST['session'];
         }
     }
   	else if ($action == "global_search_timetable")
