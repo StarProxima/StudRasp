@@ -131,8 +131,14 @@ if (isset($_POST["action"])) {
             $session = $_POST['session'];
         }
     }
-  	else if ($action == "global_search_timetable")
+  	else if ($action == "global_search_timetables")
     {
+        if (isset($_POST["search_string"])) { 
+            $search_string = $_POST['search_string'];
+        }
+        if (isset($_POST["page_number"])) { 
+            $page_number = $_POST['page_number'];
+        }
     }
     
 
@@ -157,6 +163,7 @@ $error_messages_9 = "Ошибка отправки письма.";
 $error_messages_10 = "Аккаунт не подтверждён. Проверьте почту.";
 $error_messages_11 = "Пользователь с такой почтой уже существует.";
 $error_messages_12 = "Аккаунт уже подтверждён.";
+$error_messages_13 = "Некорректный номер страницы поиска.";
 
 
 // Новые действия
@@ -312,7 +319,11 @@ else if ($action == get_my_timetables && $login != null && $session != null)
         
         while($e=$q->fetch_assoc())
             $output[]=$e;
-        $k = "{\"timeTables\":".json_encode($output,JSON_UNESCAPED_UNICODE).",\"error\":{\"code\":0,\"message\":\"\"}}";
+
+        $json_timetables = json_encode($output,JSON_UNESCAPED_UNICODE);
+        if($json_timetables == "null") $json_timetables ="[]";
+        
+        $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"}}";
         print($k);
     }
 }
@@ -336,7 +347,11 @@ else if ($action == get_saved_timetables && $login != null && $session != null)
         $q = $mysqli->query("SELECT timetables.id, timetables.name AS name FROM `users` INNER JOIN timetables ON login = \"$login\" AND json_search(users.saved_timetables, 'one', id) IS NOT NULL");
         while($e=$q->fetch_assoc())
             $output[]=$e;
-        $k = "{\"timeTables\":".json_encode($output,JSON_UNESCAPED_UNICODE).",\"error\":{\"code\":0,\"message\":\"\"}}";
+
+        $json_timetables = json_encode($output,JSON_UNESCAPED_UNICODE);
+        if($json_timetables == "null") $json_timetables ="[]";
+        
+        $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"}}";
         print($k);
     }
 }
@@ -355,20 +370,24 @@ else if ($action == get_timetable && $index != null)
         $qqarray =$q->fetch_assoc();
         print("{\"error\":{\"code\":0,\"message\":\"\"},\"timetable\":{\"id\":".$qqarray["id"].",\"info\":".$qqarray["info"]."}}");
         $mysqli->query("UPDATE timetables SET popularity = popularity + 1 WHERE id = $index");
-        if ($login != null)
+        if ($login != null && $session != null)
         {
-          if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->num_rows == 0)
-          {
-              print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
-          }
-          else
-          {
-            if($mysqli->query("SELECT users.saved_timetables FROM users WHERE login =  \"$login\" AND JSON_CONTAINS(users.saved_timetables, JSON_ARRAY(\"$index\"))")->num_rows == 0)
+            if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->num_rows == 0)
             {
-             $tmp_id = $qqarray["id"];
-            	$mysqli->query("UPDATE users SET `saved_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, \"$\", \"$tmp_id\") WHERE login = \"$login\"");
+                print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
             }
-          }
+            else if (hash('sha256', $session) != $mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["session"])
+            {
+                print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
+            }
+            else
+            {
+                if($mysqli->query("SELECT users.saved_timetables FROM users WHERE login =  \"$login\" AND JSON_CONTAINS(users.saved_timetables, JSON_ARRAY(\"$index\"))")->num_rows == 0)
+                {
+                    $tmp_id = $qqarray["id"];
+                    $mysqli->query("UPDATE users SET `saved_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, \"$\", \"$tmp_id\") WHERE login = \"$login\"");
+                }
+            }
         }
     }
 }
@@ -503,16 +522,37 @@ else if ($action == check_session && $login != null && $session != null)
         print("{\"error\":{\"code\":0,\"message\":\"\"}}"); 
     }
 }
-
-else if ($action == global_search_timetable)
+else if ($action == global_search_timetables && $page_number != NULL)
 {
+    $page_number = ctype_digit($page_number) ? intval($page_number) : -1;
+    var_dump($page_number);
+    if($page_number < 0)
     {
-        $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables ORDER BY popularity DESC LIMIT 0, 25");
+        print("{\"error\":{\"code\":13,\"message\":\"$error_messages_13\"}}"); 
+    }  
+    else
+    {
+
+        if($search_string == NULL)
+        {
+            $search_pattern = "%";
+        } 
+        else
+        {
+            $search_pattern = "%".$search_string."%";
+        }
+
+        $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".strval($page_number*10).", 10");
         while($e=$q->fetch_assoc())
             $output[]=$e;
-        $k = "{\"timeTables\":".json_encode($output,JSON_UNESCAPED_UNICODE).",\"error\":{\"code\":0,\"message\":\"\"}}";
+
+        $json_timetables = json_encode($output,JSON_UNESCAPED_UNICODE);
+        if($json_timetables == "null") $json_timetables ="[]";
+
+        $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"}}";
         print($k);
     }
+    
 }
 
 
