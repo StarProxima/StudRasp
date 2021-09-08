@@ -252,7 +252,7 @@ else if ($action == authentication && $login != null && $auth_code != null)
         else
         {
             $mysqli->query("UPDATE users SET auth_code = '0' WHERE auth_code = '$hash_auth_code'");
-            print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login, $session)."\"}");
+            print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}");
         }
     }
 }
@@ -277,11 +277,11 @@ else if ($action == send_confirmation_email && $login != null && $session != nul
     {
         if (mail($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["email"], 'Подтверждение аккаунта StudRasp', "Для завершения регистрации аккаунта \"".$login."\" перейдите по ссылке:\rhttps://hytale-main.ru/main.php?action=authentication&login=Star&auth_code=5705b2 \rИли введите код в приложении самостоятельно: ".$rand_auth_code."\rЕсли вы не регистрировались в StudRasp, то не сообщайте никому код и просто игнорируйте данное письмо.", 'From: registration@hytale-main.ru', "-f registration@hytale-main.ru")!=null)
         {
-            print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login, $session)."\"}"); 
+            print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
         }
         else
         {
-            print("{\"error\":{\"code\":9,\"message\":\"$error_messages_9\"},\"session\":\"".update_session($login, $session)."\"}"); 
+            print("{\"error\":{\"code\":9,\"message\":\"$error_messages_9\"},\"session\":\"$session\"}"); 
         }
     }
 }
@@ -305,7 +305,7 @@ else if ($action == check_account_confirmation && $login != null && $session != 
     }
     else
     {
-        print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login, $session)."\"}"); 
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
     }
 }
 
@@ -355,7 +355,7 @@ else if ($action == get_my_timetables && $login != null && $session != null)
         $json_timetables = json_encode($output,JSON_UNESCAPED_UNICODE);
         if($json_timetables == "null") $json_timetables ="[]";
         
-        $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login)."\"}";
+        $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}";
         print($k);
     }
 }
@@ -385,7 +385,7 @@ else if ($action == get_saved_timetables && $login != null && $session != null)
         $json_timetables = json_encode($output,JSON_UNESCAPED_UNICODE);
         if($json_timetables == "null") $json_timetables ="[]";
         
-        $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login, $session)."\"}";
+        $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}";
         print($k);
     }
 }
@@ -402,7 +402,7 @@ else if ($action == get_timetable && $index != null)
     {
         $q = $mysqli->query("SELECT timetables.json as \"info\", timetables.id as \"id\" FROM timetables WHERE id = $index");
         $qqarray =$q->fetch_assoc();
-        $mysqli->query("UPDATE timetables SET `requests_all_time` = `requests_all_time` + 1 WHERE id = $index");
+        //$mysqli->query("UPDATE timetables SET `requests_all_time` = `requests_all_time` + 1 WHERE id = $index");
 
         print("{\"error\":{\"code\":0,\"message\":\"\"},\"timetable\":{\"id\":".$qqarray["id"].",\"info\":".$qqarray["info"]."}}");
         if ($login != null && $session != null)
@@ -460,12 +460,26 @@ else if ($action == update_timetable && $login != null && $session != null && $i
         else
         {   
             
-            $mysqli->query("UPDATE `timetables` SET `json` = '$json' WHERE id = $index");
+            
 
             $name = json_decode($json)->{'name'} != null ? json_decode($json)->{'name'} : "";
-            $mysqli->query("UPDATE `timetables` SET `name` = '$name' WHERE id = $index");
+            $description = json_decode($json)->{'description'} != null ? json_decode($json)->{'description'} : "";
 
-            print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login, $session)."\"}"); 
+            // $path = $mysqli->query("SELECT JSON_UNQUOTE(JSON_SEARCH(users.sessions, 'one',)) FROM users WHERE login = '$login' AND JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\") IS NOT NULL");
+
+            // while($e=$path->fetch_assoc())
+            //     $output[]=$e;
+
+            // $path = substr($output[0]["JSON_UNQUOTE(JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\"))"], 0, 5);
+            $mysqli->query("UPDATE `timetables` SET `json` = '$json' WHERE id = $index");
+
+            $mysqli->query("UPDATE `timetables` SET `info` = JSON_SET(timetables.info, '$.name', '$name') WHERE id = $index");
+            $mysqli->query("UPDATE `timetables` SET `info` = JSON_SET(timetables.info, '$.description', '$description') WHERE id = $index");
+            $mysqli->query("UPDATE `timetables` SET `info` = JSON_SET(timetables.info, '$.last_update_date', NOW()) WHERE id = $index");
+            
+            
+            
+            print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
         }
     }
 }
@@ -474,7 +488,6 @@ else if ($action == update_timetable && $login != null && $session != null && $i
 
 else if ($action == create_timetable && $login != null && $session != null)
 {
-  
     if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
     {
         print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
@@ -490,14 +503,16 @@ else if ($action == create_timetable && $login != null && $session != null)
     else
     {
         $default_json_timetable = "{   \"name\": \"Без имени\",    \"firstWeek\": \"\",    \"secondWeek\": \"\",    \"days\": [    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    }    ]    }";
-        $mysqli->query("INSERT INTO timetables(`name`, `json`) VALUES ('Без имени','$default_json_timetable')");
-        $q = $mysqli->query("SELECT timetables.id FROM timetables WHERE id = LAST_INSERT_ID()");
-        $qarray = $q->fetch_array();
-        $id = $qarray["id"];
+
+        $mysqli->query("INSERT INTO timetables(`name`, `json`, `info`) VALUES ('Без имени','$default_json_timetable', JSON_OBJECT('name','Без имени','description','','creator','$login','creation_date', NOW(),'last_update_date', NOW(),'regular_users', 1))");
+        
+        $id = $mysqli->query("SELECT timetables.id FROM timetables WHERE id = LAST_INSERT_ID()")->fetch_array()["id"];
+
         $mysqli->query("UPDATE users SET `my_timetables` = JSON_ARRAY_APPEND(users.my_timetables, '$', '$id') WHERE login = '$login'");
+
         $mysqli->query("UPDATE users SET `saved_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, '$', '$id') WHERE login = '$login'");
 
-        print("{\"error\":{\"code\":0,\"message\":\"\"},\"id\":".($qarray["id"]).",\"session\":\"".update_session($login, $session)."\"}"); 
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"id\":\"$id\",\"session\":\"$session\"}");
     }
 }
 
@@ -531,7 +546,7 @@ else if ($action == delete_timetable && $login != null && $session != null && $i
         $mysqli->query("DELETE FROM timetables WHERE id = $index");
         $mysqli->query("UPDATE users SET my_timetables = JSON_REMOVE(users.my_timetables, JSON_UNQUOTE(JSON_SEARCH(users.my_timetables, 'one', '$index'))) WHERE json_search(users.my_timetables, 'one', '$index') IS NOT NULL");
         $mysqli->query("UPDATE users SET saved_timetables = JSON_REMOVE(users.saved_timetables, JSON_UNQUOTE(JSON_SEARCH(users.saved_timetables, 'one', '$index'))) WHERE json_search(users.saved_timetables, 'one', '$index') IS NOT NULL");
-        print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login, $session)."\"}"); 
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
 
     }
 }
@@ -581,20 +596,20 @@ else if ($action == global_search_timetables && $page_number != NULL)
         if($tabs_per_page == NULL)
             $tabs_per_page = 20;
 
-        switch($sort_type)
-        {
-            case "name":
-                $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
-                break;
-            case "requests_all_time":
-                $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY timetables.requests_all_time DESC LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
-                break;
-            case "requests_last_month":
-                break;
-            default:
-                $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
-                break;
-        }
+        // switch($sort_type)
+        // {
+        //     case "name":
+        //         $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
+        //         break;
+        //     case "requests_all_time":
+        //         $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY timetables.requests_all_time DESC LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
+        //         break;
+        //     case "requests_last_month":
+        //         break;
+        //     default:
+        //         $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
+        //         break;
+        // }
 
         while($e=$q->fetch_assoc())
             $output[]=$e;
