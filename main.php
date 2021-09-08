@@ -1,13 +1,9 @@
-<?php // сохранить в utf-8 !
-$mysql_host = "localhost"; // sql сервер
-$mysql_user = "rustamxa_timetable"; // пользователь
-$mysql_password = "timetable"; // пароль
-$mysql_database = "rustamxa_timetable"; // имя базы данных
+<?php
+$mysql_host = "localhost";
+$mysql_user = "rustamxa_timetable";
+$mysql_password = "timetable";
+$mysql_database = "rustamxa_timetable";
 
-
-// ----------------------------------------------------------
-// например ...chat.php?action=select
-//-----------------------------------------------------------
 if (isset($_POST["action"])) { 
     $action = $_POST['action'];
 
@@ -139,17 +135,17 @@ if (isset($_POST["action"])) {
         if (isset($_POST["page_number"])) { 
             $page_number = $_POST['page_number'];
         }
+        if (isset($_POST["sort_type"])) { 
+            $sort_type = $_POST['sort_type'];
+        }
     }
     
 
 }
 
-
-
 $mysqli = new mysqli($mysql_host, $mysql_user, $mysql_password, $mysql_database);
 print($mysqli->connect_error);
 $mysqli->set_charset('utf-8');
-// ------------------------------------------------------------ обрабатываем запрос если он был
 
 $error_messages_1 = "Пользователь с таким логином уже существует.";
 $error_messages_2 = "Такого пользователя не существует.";
@@ -165,15 +161,43 @@ $error_messages_11 = "Пользователь с такой почтой уже
 $error_messages_12 = "Аккаунт уже подтверждён.";
 $error_messages_13 = "Некорректный номер страницы поиска.";
 
+function update_session($login, $session)
+{
+    global $mysqli, $error_messages_1, $error_messages_2,$error_messages_3, $error_messages_4, $error_messages_5, $error_messages_6, $error_messages_7, $error_messages_8, $error_messages_9, $error_messages_10, $error_messages_11, $error_messages_12, $error_messages_13;
+    
+    $rand_session = bin2hex(random_bytes(8));
+    $hash_session = hash('sha256', $rand_session);
+    $path = $mysqli->query("SELECT JSON_UNQUOTE(JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\")) FROM users WHERE login = '$login' AND JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\") IS NOT NULL");
+    while($e=$path->fetch_assoc())
+            $output[]=$e;
+    $path = substr($output[0]["JSON_UNQUOTE(JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\"))"], 0, 5);
 
-// Новые действия
+    $mysqli->query("UPDATE users SET users.sessions = JSON_SET(users.sessions, '".$path."session', '$hash_session') WHERE login = '$login' AND JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\") IS NOT NULL");
+    $mysqli->query("UPDATE users SET users.sessions = JSON_SET(users.sessions, '".$path."last_update_date', NOW()) WHERE login = '$login' AND JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $rand_session)."\") IS NOT NULL");
+    return $rand_session;
+}
+
+function new_session($login)
+{
+    global $mysqli, $error_messages_1, $error_messages_2,$error_messages_3, $error_messages_4, $error_messages_5, $error_messages_6, $error_messages_7, $error_messages_8, $error_messages_9, $error_messages_10, $error_messages_11, $error_messages_12, $error_messages_13;
+    
+    $rand_session = bin2hex(random_bytes(8));
+    $hash_session = hash('sha256', $rand_session);
+
+    $mysqli->query("UPDATE users SET users.sessions = JSON_ARRAY_APPEND(users.sessions, '$', JSON_OBJECT('session','$hash_session', 'last_update_date', NOW())) WHERE login = '$login'");
+
+    return $rand_session;
+}
+
+
+
 if ($action == registration && $login != null && $password != null && $email != null)
 {
-    if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->num_rows != 0)
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows != 0)
     {
         print("{\"error\":{\"code\":1,\"message\":\"$error_messages_1\"}}"); 
     }
-    else if ($mysqli->query("SELECT * FROM users WHERE email = \"$email\" AND auth_code = \"0\"")->num_rows != 0)
+    else if ($mysqli->query("SELECT * FROM users WHERE email = \"$email\" AND auth_code = '0'")->num_rows != 0)
     {
         print("{\"error\":{\"code\":11,\"message\":\"$error_messages_11\"}}"); 
     }
@@ -182,45 +206,47 @@ if ($action == registration && $login != null && $password != null && $email != 
         $rand_auth_code = bin2hex(random_bytes(3));   
         $hash_auth_code = hash('sha256', $rand_auth_code);
 
-        $rand_session = bin2hex(random_bytes(3));
-        $hash_session = hash('sha256', $rand_session);
-
+        
+        
         $hash_password = hash('sha256', $password);
 
-        $mysqli->query("INSERT INTO `users`(`login`,`password`,`email`,`session`,`auth_code`,`my_timetables`,`saved_timetables`) VALUES (\"$login\", \"$hash_password\", \"$email\",\"$hash_session\", \"$hash_auth_code\", \"[]\", \"[]\")");
+        $mysqli->query("INSERT INTO `users`(`login`,`password`,`email`,`sessions`,`auth_code`,`my_timetables`,`saved_timetables`) VALUES ('$login', '$hash_password', '$email','[]', '$hash_auth_code', '[]', '[]')");
 
-        if (mail($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["email"], 'Подтверждение аккаунта StudRasp', "Для завершения регистрации аккаунта \"".$login."\" перейдите по ссылке:\rhttps://hytale-main.ru/main.php?action=authentication&login=".$login."&auth_code=".$rand_auth_code." \rИли введите код в приложении самостоятельно: ".$rand_auth_code."\rЕсли вы не регистрировались в StudRasp, то не сообщайте никому код и игнорируйте данное письмо.", 'From: registration@studrasp.ru', "-f registration@studrasp.ru")!=null)
+        // $rand_session = bin2hex(random_bytes(8));
+        // $hash_session = hash('sha256', $rand_session);
+
+        // $mysqli->query("UPDATE users SET users.sessions = JSON_ARRAY_APPEND(users.sessions, '$', JSON_OBJECT('session','$hash_session', 'last_update_date', NOW())) WHERE login = '$login'");
+
+        if (mail($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["email"], 'Подтверждение аккаунта StudRasp', "Для завершения регистрации аккаунта \"".$login."\" перейдите по ссылке:\rhttps://hytale-main.ru/main.php?action=authentication&login=".$login."&auth_code=".$rand_auth_code." \rИли введите код в приложении самостоятельно: ".$rand_auth_code."\rЕсли вы не регистрировались в StudRasp, то не сообщайте никому код и игнорируйте данное письмо.", 'From: registration@studrasp.ru', "-f registration@studrasp.ru")!=null)
         {
-            print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$rand_session\"}"); 
+            print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".new_session($login)."\"}"); 
         }
         else
         {
-            print("{\"error\":{\"code\":9,\"message\":\"$error_messages_9\"},\"session\":\"$rand_session\"}");  
+            print("{\"error\":{\"code\":9,\"message\":\"$error_messages_9\"},\"session\":\"".new_session($login)."\"}");  
         }
     }
 }
 
 
 
-
-
 else if ($action == authentication && $login != null && $auth_code != null)
 {
-    if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->num_rows == 0)
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
     {
         print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
     }
     else
     {
         $hash_auth_code = hash('sha256',$auth_code);
-        if ($mysqli->query("SELECT * FROM users WHERE auth_code = \"$hash_auth_code\"")->num_rows == 0 || $auth_code = "0")
+        if ($mysqli->query("SELECT * FROM users WHERE auth_code = '$hash_auth_code'")->num_rows == 0 || $auth_code = "0")
         {
             print("{\"error\":{\"code\":8,\"message\":\"$error_messages_8\"}}"); 
         }
         else
         {
-            $mysqli->query("UPDATE users SET auth_code = \"0\" WHERE auth_code = \"$hash_auth_code\"");
-            print("{\"error\":{\"code\":0,\"message\":\"\"}}");
+            $mysqli->query("UPDATE users SET auth_code = '0' WHERE auth_code = '$hash_auth_code'");
+            print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login, $session)."\"}");
         }
     }
 }
@@ -229,48 +255,51 @@ else if ($action == authentication && $login != null && $auth_code != null)
 
 else if ($action == send_confirmation_email && $login != null && $session != null)
 {
-    if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->num_rows == 0)
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
     {
         print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
     }
-    else if (hash('sha256', $session) != $mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["session"] )
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
     {
         print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
     }
-    else if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["auth_code"] == "0")
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] == "0")
     {
         print("{\"error\":{\"code\":12,\"message\":\"$error_messages_12\"}}"); 
     }
     else
     {
-        if (mail($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["email"], 'Подтверждение аккаунта StudRasp', "Для завершения регистрации аккаунта \"".$login."\" перейдите по ссылке:\rhttps://hytale-main.ru/main.php?action=authentication&login=Star&auth_code=5705b2 \rИли введите код в приложении самостоятельно: ".$rand_auth_code."\rЕсли вы не регистрировались в StudRasp, то не сообщайте никому код и просто игнорируйте данное письмо.", 'From: registration@hytale-main.ru', "-f registration@hytale-main.ru")!=null)
+        if (mail($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["email"], 'Подтверждение аккаунта StudRasp', "Для завершения регистрации аккаунта \"".$login."\" перейдите по ссылке:\rhttps://hytale-main.ru/main.php?action=authentication&login=Star&auth_code=5705b2 \rИли введите код в приложении самостоятельно: ".$rand_auth_code."\rЕсли вы не регистрировались в StudRasp, то не сообщайте никому код и просто игнорируйте данное письмо.", 'From: registration@hytale-main.ru', "-f registration@hytale-main.ru")!=null)
         {
-            print("{\"error\":{\"code\":0,\"message\":\"\"}}"); 
+            print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login, $session)."\"}"); 
         }
         else
         {
-            print("{\"error\":{\"code\":9,\"message\":\"$error_messages_9\"}}"); 
+            print("{\"error\":{\"code\":9,\"message\":\"$error_messages_9\"},\"session\":\"".update_session($login, $session)."\"}"); 
         }
     }
 }
 
+
+
 else if ($action == check_account_confirmation && $login != null && $session != null)
 {
-    if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->num_rows == 0)
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
     {
         print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
     }
-    else if (hash('sha256', $session) != $mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["session"] )
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
     {
         print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
     }
-    else if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["auth_code"] == "0")
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] != "0")
     {
-        print("{\"error\":{\"code\":0,\"message\":\"\"}}"); 
+        print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
+        
     }
     else
     {
-        print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login, $session)."\"}"); 
     }
 }
 
@@ -278,21 +307,18 @@ else if ($action == check_account_confirmation && $login != null && $session != 
 
 else if ($action == authorization && $login != null && $password != null)
 {
-    if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\" OR (email = \"$login\" AND auth_code = \"0\")")->num_rows == 0)
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login' OR (email = '$login' AND auth_code = \"0\")")->num_rows == 0)
     {
         print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
     }
-    else if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\" OR (email = \"$login\" AND auth_code = \"0\")")->fetch_array()["password"] != hash('sha256', $password))
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' OR (email = '$login' AND auth_code = \"0\")")->fetch_array()["password"] != hash('sha256', $password))
     {
         print("{\"error\":{\"code\":3,\"message\":\"$error_messages_3\"}}"); 
     }
     else
     {
-        $rand_session = bin2hex(random_bytes(3));
-        $hash_session = hash('sha256', $rand_session);
-
-        $mysqli->query("UPDATE users SET session = \"$hash_session\" WHERE login = \"$login\" OR (email = \"$login\" AND auth_code = \"0\")");
-        print("{\"error\":{\"code\":0,\"message\":\"\"},\"login\":\"$login\",\"session\":\"$rand_session\"}"); 
+        $mysqli->query("UPDATE users SET session = \"$hash_session\" WHERE login = '$login' OR (email = '$login' AND auth_code = \"0\")");
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"login\":\"$login\",\"session\":\"".new_session($login)."\"}"); 
     }
 }
 
@@ -300,22 +326,22 @@ else if ($action == authorization && $login != null && $password != null)
 
 else if ($action == get_my_timetables && $login != null && $session != null)
 {
-    if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->num_rows == 0)
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
     {
         print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
     }
-    else if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["auth_code"] != strval(0))
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] != strval(0))
     {
         print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
     }
-    else if (hash('sha256', $session) != $mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["session"] )
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
     {
         print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
     }
     else
     {
         //SUBSTRING(timetables.json->'$.name', 2, char_length(timetables.json->'$.name')-2 )
-        $q = $mysqli->query("SELECT timetables.id, timetables.name AS name FROM `users` INNER JOIN timetables ON login = \"$login\" AND json_search(users.my_timetables, 'one', id) IS NOT NULL");
+        $q = $mysqli->query("SELECT timetables.id, timetables.name AS name FROM `users` INNER JOIN timetables ON login = '$login' AND json_search(users.my_timetables, 'one', id) IS NOT NULL");
         
         while($e=$q->fetch_assoc())
             $output[]=$e;
@@ -323,35 +349,37 @@ else if ($action == get_my_timetables && $login != null && $session != null)
         $json_timetables = json_encode($output,JSON_UNESCAPED_UNICODE);
         if($json_timetables == "null") $json_timetables ="[]";
         
-        $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"}}";
+        $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login)."\"}";
         print($k);
     }
 }
 
+
+
 else if ($action == get_saved_timetables && $login != null && $session != null)
 {
-    if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->num_rows == 0)
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
     {
         print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
     }
-    else if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["auth_code"] != strval(0))
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] != strval(0))
     {
         print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
     }
-    else if (hash('sha256', $session) != $mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["session"])
+    else if (hash('sha256', $session) != $mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["sessions"])
     {
         print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
     }
     else
     {
-        $q = $mysqli->query("SELECT timetables.id, timetables.name AS name FROM `users` INNER JOIN timetables ON login = \"$login\" AND json_search(users.saved_timetables, 'one', id) IS NOT NULL");
+        $q = $mysqli->query("SELECT timetables.id, timetables.name AS name FROM `users` INNER JOIN timetables ON login = '$login' AND json_search(users.saved_timetables, 'one', id) IS NOT NULL");
         while($e=$q->fetch_assoc())
             $output[]=$e;
 
         $json_timetables = json_encode($output,JSON_UNESCAPED_UNICODE);
         if($json_timetables == "null") $json_timetables ="[]";
         
-        $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"}}";
+        $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login, $session)."\"}";
         print($k);
     }
 }
@@ -368,24 +396,25 @@ else if ($action == get_timetable && $index != null)
     {
         $q = $mysqli->query("SELECT timetables.json as \"info\", timetables.id as \"id\" FROM timetables WHERE id = $index");
         $qqarray =$q->fetch_assoc();
-        print("{\"error\":{\"code\":0,\"message\":\"\"},\"timetable\":{\"id\":".$qqarray["id"].",\"info\":".$qqarray["info"]."}}");
         $mysqli->query("UPDATE timetables SET popularity = popularity + 1 WHERE id = $index");
+
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"timetable\":{\"id\":".$qqarray["id"].",\"info\":".$qqarray["info"]."}}");
         if ($login != null && $session != null)
         {
-            if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->num_rows == 0)
+            if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
             {
                 print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
             }
-            else if (hash('sha256', $session) != $mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["session"])
+            else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == )
             {
                 print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
             }
             else
             {
-                if($mysqli->query("SELECT users.saved_timetables FROM users WHERE login =  \"$login\" AND JSON_CONTAINS(users.saved_timetables, JSON_ARRAY(\"$index\"))")->num_rows == 0)
+                if($mysqli->query("SELECT users.saved_timetables FROM users WHERE login =  '$login' AND JSON_CONTAINS(users.saved_timetables, JSON_ARRAY('$index'))")->num_rows == 0)
                 {
                     $tmp_id = $qqarray["id"];
-                    $mysqli->query("UPDATE users SET `saved_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, \"$\", \"$tmp_id\") WHERE login = \"$login\"");
+                    $mysqli->query("UPDATE users SET `saved_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, '$', '$tmp_id') WHERE login = '$login'");
                 }
             }
         }
@@ -396,15 +425,15 @@ else if ($action == get_timetable && $index != null)
 
 else if ($action == update_timetable && $login != null && $session != null && $index != null && $json != null)
 {
-    if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->num_rows == 0)
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
     {
         print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
     }
-    else if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["auth_code"] != strval(0))
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] != strval(0))
     {
         print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
     }
-    else if (hash('sha256', $session) != $mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["session"] )
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
     {
         print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
     }
@@ -412,7 +441,7 @@ else if ($action == update_timetable && $login != null && $session != null && $i
     {
         print("{\"error\":{\"code\":5,\"message\":\"$error_messages_5\"}}"); 
     }
-    else if($mysqli->query("SELECT users.my_timetables FROM users WHERE login =  \"$login\" AND JSON_CONTAINS(users.my_timetables, JSON_ARRAY(\"$index\"))")->num_rows == 0)
+    else if($mysqli->query("SELECT users.my_timetables FROM users WHERE login =  '$login' AND JSON_CONTAINS(users.my_timetables, JSON_ARRAY(\"$index\"))")->num_rows == 0)
     {
         print("{\"error\":{\"code\":7,\"message\":\"$error_messages_7\"}}");
     }
@@ -425,12 +454,12 @@ else if ($action == update_timetable && $login != null && $session != null && $i
         else
         {   
             
-            $mysqli->query("UPDATE `timetables` SET `json` = \"$json\" WHERE id = $index");
+            $mysqli->query("UPDATE `timetables` SET `json` = '$json' WHERE id = $index");
 
-            //Почему-то не работает при апдейте в одном запросе, странно...
             $name = json_decode($json)->{'name'} != null ? json_decode($json)->{'name'} : "";
-            $mysqli->query("UPDATE `timetables` SET `name` = \"$name\" WHERE id = $index");
-            print("{\"error\":{\"code\":0,\"message\":\"\"}}"); 
+            $mysqli->query("UPDATE `timetables` SET `name` = '$name' WHERE id = $index");
+
+            print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login, $session)."\"}"); 
         }
     }
 }
@@ -440,15 +469,15 @@ else if ($action == update_timetable && $login != null && $session != null && $i
 else if ($action == create_timetable && $login != null && $session != null)
 {
   
-    if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->num_rows == 0)
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
     {
         print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
     }
-    else if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["auth_code"] != strval(0))
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] != strval(0))
     {
         print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
     }
-    else if (hash('sha256', $session) != $mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["session"] )
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
     {
         print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
     }
@@ -459,10 +488,10 @@ else if ($action == create_timetable && $login != null && $session != null)
         $q = $mysqli->query("SELECT timetables.id FROM timetables WHERE id = LAST_INSERT_ID()");
         $qarray = $q->fetch_array();
         $id = $qarray["id"];
-        $mysqli->query("UPDATE users SET `my_timetables` = JSON_ARRAY_APPEND(users.my_timetables, \"$\", \"$id\") WHERE login = \"$login\"");
-        $mysqli->query("UPDATE users SET `saved_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, \"$\", \"$id\") WHERE login = \"$login\"");
+        $mysqli->query("UPDATE users SET `my_timetables` = JSON_ARRAY_APPEND(users.my_timetables, '$', '$id') WHERE login = '$login'");
+        $mysqli->query("UPDATE users SET `saved_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, '$', '$id') WHERE login = '$login'");
 
-        print("{\"error\":{\"code\":0,\"message\":\"\"},\"id\":".($qarray["id"])."}"); 
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"id\":".($qarray["id"]).",\"session\":\"".update_session($login, $session)."\"}"); 
     }
 }
 
@@ -471,15 +500,15 @@ else if ($action == create_timetable && $login != null && $session != null)
 else if ($action == delete_timetable && $login != null && $session != null && $index != null)
 {
 
-    if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->num_rows == 0)
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
     {
         print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
     }
-    else if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["auth_code"] != strval(0))
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] != strval(0))
     {
         print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
     }
-    else if (hash('sha256', $session) != $mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["session"] )
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
     {
         print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
     }
@@ -487,16 +516,16 @@ else if ($action == delete_timetable && $login != null && $session != null && $i
     {
         print("{\"error\":{\"code\":5,\"message\":\"$error_messages_5\"}}"); 
     }
-    else if($mysqli->query("SELECT users.my_timetables FROM users WHERE login =  \"$login\" AND JSON_CONTAINS(users.my_timetables, JSON_ARRAY(\"$index\"))")->num_rows == 0)
+    else if($mysqli->query("SELECT users.my_timetables FROM users WHERE login =  '$login' AND JSON_CONTAINS(users.my_timetables, JSON_ARRAY('$index'))")->num_rows == 0)
     {
         print("{\"error\":{\"code\":7,\"message\":\"$error_messages_7\"}}");
     }
     else
     {
         $mysqli->query("DELETE FROM timetables WHERE id = $index");
-        $mysqli->query("UPDATE users SET my_timetables = JSON_REMOVE(users.my_timetables, JSON_UNQUOTE(JSON_SEARCH(users.my_timetables, 'one', \"$index\"))) WHERE json_search(users.my_timetables, 'one', \"$index\") IS NOT NULL");
-        $mysqli->query("UPDATE users SET saved_timetables = JSON_REMOVE(users.saved_timetables, JSON_UNQUOTE(JSON_SEARCH(users.saved_timetables, 'one', \"$index\"))) WHERE json_search(users.saved_timetables, 'one', \"$index\") IS NOT NULL");
-        print("{\"error\":{\"code\":0,\"message\":\"\"}}"); 
+        $mysqli->query("UPDATE users SET my_timetables = JSON_REMOVE(users.my_timetables, JSON_UNQUOTE(JSON_SEARCH(users.my_timetables, 'one', '$index'))) WHERE json_search(users.my_timetables, 'one', '$index') IS NOT NULL");
+        $mysqli->query("UPDATE users SET saved_timetables = JSON_REMOVE(users.saved_timetables, JSON_UNQUOTE(JSON_SEARCH(users.saved_timetables, 'one', '$index'))) WHERE json_search(users.saved_timetables, 'one', '$index') IS NOT NULL");
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".update_session($login, $session)."\"}"); 
 
     }
 }
@@ -505,15 +534,15 @@ else if ($action == delete_timetable && $login != null && $session != null && $i
 
 else if ($action == check_session && $login != null && $session != null)
 {
-    if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->num_rows == 0)
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
     {
         print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
     }
-    else if ($mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["auth_code"] != strval(0))
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] != strval(0))
     {
         print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
     }
-    else if (hash('sha256', $session) != $mysqli->query("SELECT * FROM users WHERE login = \"$login\"")->fetch_array()["session"] )
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
     {
         print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
     }
@@ -522,6 +551,9 @@ else if ($action == check_session && $login != null && $session != null)
         print("{\"error\":{\"code\":0,\"message\":\"\"}}"); 
     }
 }
+
+
+
 else if ($action == global_search_timetables && $page_number != NULL)
 {
     $page_number = ctype_digit($page_number) ? intval($page_number) : -1;
@@ -532,16 +564,12 @@ else if ($action == global_search_timetables && $page_number != NULL)
     }  
     else
     {
-
         if($search_string == NULL)
-        {
             $search_pattern = "%";
-        } 
         else
-        {
             $search_pattern = "%".$search_string."%";
-        }
-
+        
+        
         $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".strval($page_number*10).", 10");
         while($e=$q->fetch_assoc())
             $output[]=$e;
