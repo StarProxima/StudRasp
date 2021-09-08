@@ -400,11 +400,12 @@ else if ($action == get_timetable && $index != null)
     }
     else
     {
-        $q = $mysqli->query("SELECT timetables.json as \"info\", timetables.id as \"id\" FROM timetables WHERE id = $index");
+        $q = $mysqli->query("SELECT timetables.json as 'json', timetables.id as \"id\" FROM timetables WHERE id = $index");
         $qqarray =$q->fetch_assoc();
         //$mysqli->query("UPDATE timetables SET `requests_all_time` = `requests_all_time` + 1 WHERE id = $index");
 
-        print("{\"error\":{\"code\":0,\"message\":\"\"},\"timetable\":{\"id\":".$qqarray["id"].",\"info\":".$qqarray["info"]."}}");
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"timetable\":{\"id\":".$qqarray["id"].",\"json\":".$qqarray["json"]."}}");
+
         if ($login != null && $session != null)
         {
             if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
@@ -462,8 +463,7 @@ else if ($action == update_timetable && $login != null && $session != null && $i
             
             
 
-            $name = json_decode($json)->{'name'} != null ? json_decode($json)->{'name'} : "";
-            $description = json_decode($json)->{'description'} != null ? json_decode($json)->{'description'} : "";
+            
 
             // $path = $mysqli->query("SELECT JSON_UNQUOTE(JSON_SEARCH(users.sessions, 'one',)) FROM users WHERE login = '$login' AND JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\") IS NOT NULL");
 
@@ -473,9 +473,12 @@ else if ($action == update_timetable && $login != null && $session != null && $i
             // $path = substr($output[0]["JSON_UNQUOTE(JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\"))"], 0, 5);
             $mysqli->query("UPDATE `timetables` SET `json` = '$json' WHERE id = $index");
 
+            $name = json_decode($json)->{'name'} != null ? json_decode($json)->{'name'} : "";
+            $mysqli->query("UPDATE `timetables` SET `name` = '$name' WHERE id = $index");
+
             $mysqli->query("UPDATE `timetables` SET `info` = JSON_SET(timetables.info, '$.name', '$name') WHERE id = $index");
-            $mysqli->query("UPDATE `timetables` SET `info` = JSON_SET(timetables.info, '$.description', '$description') WHERE id = $index");
-            $mysqli->query("UPDATE `timetables` SET `info` = JSON_SET(timetables.info, '$.last_update_date', NOW()) WHERE id = $index");
+            $mysqli->query("UPDATE `timetables` SET `info` = JSON_SET(timetables.info, '$.lastUpdateDate', NOW()) WHERE id = $index");
+            $mysqli->query("UPDATE `timetables` SET `info` = JSON_SET(timetables.info, '$.lastUpdateInitiator', '$login') WHERE id = $index");
             
             
             
@@ -504,7 +507,7 @@ else if ($action == create_timetable && $login != null && $session != null)
     {
         $default_json_timetable = "{   \"name\": \"Без имени\",    \"firstWeek\": \"\",    \"secondWeek\": \"\",    \"days\": [    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    }    ]    }";
 
-        $mysqli->query("INSERT INTO timetables(`name`, `json`, `info`) VALUES ('Без имени','$default_json_timetable', JSON_OBJECT('name','Без имени','description','','creator','$login','creation_date', NOW(),'last_update_date', NOW(),'regular_users', 1))");
+        $mysqli->query("INSERT INTO timetables(`name`, `json`, `info`) VALUES ('Без имени','$default_json_timetable', JSON_OBJECT('name','Без имени','creator','$login','editors',JSON_ARRAY('$login'),'creationDate', NOW(),'lastUpdateDate', NOW(), 'lastUpdateInitiator','$login','regularUsers', 1))");
         
         $id = $mysqli->query("SELECT timetables.id FROM timetables WHERE id = LAST_INSERT_ID()")->fetch_array()["id"];
 
