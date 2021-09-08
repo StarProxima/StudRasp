@@ -138,6 +138,9 @@ if (isset($_POST["action"])) {
         if (isset($_POST["sort_type"])) { 
             $sort_type = $_POST['sort_type'];
         }
+        if (isset($_POST["tabs_per_page"])) { 
+            $tabs_per_page = $_POST['tabs_per_page'];
+        }
     }
     
 
@@ -167,9 +170,12 @@ function update_session($login, $session)
     
     $rand_session = bin2hex(random_bytes(8));
     $hash_session = hash('sha256', $rand_session);
+
     $path = $mysqli->query("SELECT JSON_UNQUOTE(JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\")) FROM users WHERE login = '$login' AND JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\") IS NOT NULL");
+
     while($e=$path->fetch_assoc())
-            $output[]=$e;
+        $output[]=$e;
+
     $path = substr($output[0]["JSON_UNQUOTE(JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\"))"], 0, 5);
 
     $mysqli->query("UPDATE users SET users.sessions = JSON_SET(users.sessions, '".$path."session', '$hash_session') WHERE login = '$login' AND JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\") IS NOT NULL");
@@ -396,7 +402,7 @@ else if ($action == get_timetable && $index != null)
     {
         $q = $mysqli->query("SELECT timetables.json as \"info\", timetables.id as \"id\" FROM timetables WHERE id = $index");
         $qqarray =$q->fetch_assoc();
-        $mysqli->query("UPDATE timetables SET popularity = popularity + 1 WHERE id = $index");
+        $mysqli->query("UPDATE timetables SET `requests_all_time` = `requests_all_time` + 1 WHERE id = $index");
 
         print("{\"error\":{\"code\":0,\"message\":\"\"},\"timetable\":{\"id\":".$qqarray["id"].",\"info\":".$qqarray["info"]."}}");
         if ($login != null && $session != null)
@@ -405,7 +411,7 @@ else if ($action == get_timetable && $index != null)
             {
                 print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
             }
-            else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == )
+            else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
             {
                 print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
             }
@@ -557,7 +563,7 @@ else if ($action == check_session && $login != null && $session != null)
 else if ($action == global_search_timetables && $page_number != NULL)
 {
     $page_number = ctype_digit($page_number) ? intval($page_number) : -1;
-    var_dump($page_number);
+    
     if($page_number < 0)
     {
         print("{\"error\":{\"code\":13,\"message\":\"$error_messages_13\"}}"); 
@@ -569,8 +575,27 @@ else if ($action == global_search_timetables && $page_number != NULL)
         else
             $search_pattern = "%".$search_string."%";
         
-        
-        $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".strval($page_number*10).", 10");
+        if($sort_type == NULL)
+            $sort_type = "name";
+
+        if($tabs_per_page == NULL)
+            $tabs_per_page = 20;
+
+        switch($sort_type)
+        {
+            case "name":
+                $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
+                break;
+            case "requests_all_time":
+                $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY timetables.requests_all_time DESC LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
+                break;
+            case "requests_last_month":
+                break;
+            default:
+                $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
+                break;
+        }
+
         while($e=$q->fetch_assoc())
             $output[]=$e;
 
