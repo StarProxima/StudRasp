@@ -73,6 +73,15 @@ if (isset($_POST["action"])) {
             $session = $_POST['session'];
         }
     }
+    else if ($action == "get_editable_timetables")
+    {
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
+        }
+        if (isset($_POST["session"])) { 
+            $session = $_POST['session'];
+        }
+    }
     else if ($action == "add_saved_timetable")
     {
         if (isset($_POST["login"])) { 
@@ -363,8 +372,8 @@ else if ($action == get_my_timetables && $login != null && $session != null)
         
         while($e=$q->fetch_assoc())
             $output[]=$e;
-
         $json_timetables = json_encode($output,JSON_UNESCAPED_UNICODE);
+
         if($json_timetables == "null") $json_timetables ="[]";
         
         $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}";
@@ -384,19 +393,52 @@ else if ($action == get_saved_timetables && $login != null && $session != null)
     {
         print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
     }
-    else if (hash('sha256', $session) != $mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["sessions"])
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
     {
         print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
     }
     else
     {
         $q = $mysqli->query("SELECT timetables.id, timetables.name AS name FROM `users` INNER JOIN timetables ON login = '$login' AND json_search(users.saved_timetables, 'one', id) IS NOT NULL");
+
         while($e=$q->fetch_assoc())
             $output[]=$e;
-
         $json_timetables = json_encode($output,JSON_UNESCAPED_UNICODE);
+
         if($json_timetables == "null") $json_timetables ="[]";
         
+        $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}";
+        print($k);
+    }
+}
+
+
+
+else if ($action == get_editable_timetables && $login != null && $session != null)
+{
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] != strval(0))
+    {
+        print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
+    }
+    else
+    {
+        
+        $q = $mysqli->query("SELECT timetables.id, timetables.name AS name FROM `users` INNER JOIN timetables ON login = '$login' AND json_search(users.editable_timetables, 'one', id) IS NOT NULL");
+
+        while($e=$q->fetch_assoc())
+            $output[]=$e;
+        $json_timetables = json_encode($output,JSON_UNESCAPED_UNICODE);
+
+        if($json_timetables == "null") $json_timetables ="[]";
+
         $k = "{\"timeTables\":".$json_timetables.",\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}";
         print($k);
     }
@@ -414,13 +456,13 @@ else if ($action == add_saved_timetable && $login != null && $session != null &&
     {
         print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
     }
-    else if (hash('sha256', $session) != $mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["sessions"])
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
     {
         print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
     }
     else
     {
-        $mysqli->query("UPDATE users SET `saved_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, '$', '$id') WHERE login = '$login'");
+        $mysqli->query("UPDATE users SET `saved_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, '$', '$id') WHERE login = '$login' AND JSON_SEARCH(users.saved_timetables, 'one', '$id') IS NULL");
         print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
     }
 }
@@ -547,6 +589,8 @@ else if ($action == create_timetable && $login != null && $session != null)
         $id = $mysqli->query("SELECT timetables.id FROM timetables WHERE id = LAST_INSERT_ID()")->fetch_array()["id"];
 
         $mysqli->query("UPDATE users SET `my_timetables` = JSON_ARRAY_APPEND(users.my_timetables, '$', '$id') WHERE login = '$login'");
+
+        $mysqli->query("UPDATE users SET `editable_timetables` = JSON_ARRAY_APPEND(users.editable_timetables, '$', '$id') WHERE login = '$login'");
 
         $mysqli->query("UPDATE users SET `saved_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, '$', '$id') WHERE login = '$login'");
 
