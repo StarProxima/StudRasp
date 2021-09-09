@@ -182,6 +182,8 @@ if (isset($_POST["action"])) {
 
 }
 
+
+
 $mysqli = new mysqli($mysql_host, $mysql_user, $mysql_password, $mysql_database);
 print($mysqli->connect_error);
 $mysqli->set_charset('utf-8');
@@ -200,6 +202,8 @@ $error_messages_11 = "Пользователь с такой почтой уже
 $error_messages_12 = "Аккаунт уже подтверждён.";
 $error_messages_13 = "Некорректный номер страницы поиска.";
 $error_messages_14 = "У данного пользователя не сохранено это расписание.";
+
+
 
 function update_session($login, $session)
 {
@@ -220,6 +224,8 @@ function update_session($login, $session)
     return $rand_session;
 }
 
+
+
 function new_session($login)
 {
     global $mysqli, $error_messages_1, $error_messages_2,$error_messages_3, $error_messages_4, $error_messages_5, $error_messages_6, $error_messages_7, $error_messages_8, $error_messages_9, $error_messages_10, $error_messages_11, $error_messages_12, $error_messages_13;
@@ -234,13 +240,33 @@ function new_session($login)
 
 
 
+function generate_random_unique_string($length) {
+    global $mysqli, $error_messages_1, $error_messages_2,$error_messages_3, $error_messages_4, $error_messages_5, $error_messages_6, $error_messages_7, $error_messages_8, $error_messages_9, $error_messages_10, $error_messages_11, $error_messages_12, $error_messages_13;
+
+    $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $characters_length = strlen($characters);
+    $random_string = '';
+    do
+    {
+        $random_string = '';
+        for ($i = 0; $i < $length; $i++) 
+        {
+            $random_string .= $characters[rand(0, $characters_length - 1)];
+        }
+    } while ($mysqli->query("SELECT * FROM timetable WHERE invite_code = '$random_string'")->num_rows != 0);
+    
+    return $random_string;
+}
+
+
+
 if ($action == registration && $login != null && $password != null && $email != null)
 {
     if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows != 0)
     {
         print("{\"error\":{\"code\":1,\"message\":\"$error_messages_1\"}}"); 
     }
-    else if ($mysqli->query("SELECT * FROM users WHERE email = \"$email\" AND auth_code = '0'")->num_rows != 0)
+    else if ($mysqli->query("SELECT * FROM users WHERE email = '$email' AND auth_code = '0'")->num_rows != 0)
     {
         print("{\"error\":{\"code\":11,\"message\":\"$error_messages_11\"}}"); 
     }
@@ -248,8 +274,6 @@ if ($action == registration && $login != null && $password != null && $email != 
     { 
         $rand_auth_code = bin2hex(random_bytes(3));   
         $hash_auth_code = hash('sha256', $rand_auth_code);
-
-        
         
         $hash_password = hash('sha256', $password);
 
@@ -628,7 +652,7 @@ else if ($action == create_timetable && $login != null && $session != null)
     {
         $default_json_timetable = "{   \"name\": \"Без имени\",    \"firstWeek\": \"\",    \"secondWeek\": \"\",    \"days\": [    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    }    ]    }";
 
-        $mysqli->query("INSERT INTO timetables(`name`, `json`, `info`) VALUES ('Без имени','$default_json_timetable', JSON_OBJECT('name','Без имени','creator','$login','editors',JSON_ARRAY('$login'),'creationDate', NOW(),'lastUpdateDate', NOW(), 'lastUpdateInitiator','$login','regularUsers', 1))");
+        $mysqli->query("INSERT INTO timetables(`invite_code`, `name`, `json`, `info`) VALUES ('".generate_random_unique_string(4)."','Без имени','$default_json_timetable',JSON_OBJECT('name','Без имени','creator','$login','editors',JSON_ARRAY('$login'),'creationDate', NOW(),'lastUpdateDate', NOW(), 'lastUpdateInitiator','$login','regularUsers', 1))");
         
         $id = $mysqli->query("SELECT timetables.id FROM timetables WHERE id = LAST_INSERT_ID()")->fetch_array()["id"];
 
