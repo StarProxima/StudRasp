@@ -485,7 +485,7 @@ else if ($action == get_editable_timetables && $login != null && $session != nul
 
 
 
-else if ($action == give_permission_edit_timetable && $login != null && $session != null && $id != NULL $user != null)
+else if ($action == give_permission_edit_timetable && $login != null && $session != null && $id != NULL && $user != null)
 {
     if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
     {
@@ -509,7 +509,7 @@ else if ($action == give_permission_edit_timetable && $login != null && $session
     }
     else
     {
-        $mysqli->query("UPDATE users SET `editable_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, '$', '$id') WHERE login = '$user' AND JSON_SEARCH(users.editable_timetables, 'one', '$id') IS NULL");
+        $mysqli->query("UPDATE users SET `editable_timetables` = JSON_ARRAY_APPEND(users.editable_timetables, '$', '$id') WHERE login = '$user' AND JSON_SEARCH(users.editable_timetables, 'one', '$id') IS NULL");
         print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
     }
 }
