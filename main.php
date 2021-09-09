@@ -94,6 +94,21 @@ if (isset($_POST["action"])) {
             $id = $_POST['id'];
         }
     }
+    else if ($action == "give_permission_edit_timetable")
+    {
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
+        }
+        if (isset($_POST["session"])) { 
+            $session = $_POST['session'];
+        }
+        if (isset($_POST["id"])) { 
+            $id = $_POST['id'];
+        }
+        if (isset($_POST["user"])) { 
+            $user = $_POST['user'];
+        }
+    }
     else if ($action == "get_timetable")
     {
         if (isset($_POST["id"])) { 
@@ -184,6 +199,7 @@ $error_messages_10 = "Аккаунт не подтверждён. Проверь
 $error_messages_11 = "Пользователь с такой почтой уже существует.";
 $error_messages_12 = "Аккаунт уже подтверждён.";
 $error_messages_13 = "Некорректный номер страницы поиска.";
+$error_messages_14 = "У данного пользователя не сохранено это расписание.";
 
 function update_session($login, $session)
 {
@@ -414,6 +430,29 @@ else if ($action == get_saved_timetables && $login != null && $session != null)
 
 
 
+else if ($action == add_saved_timetable && $login != null && $session != null && $id != NULL)
+{
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] != strval(0))
+    {
+        print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
+    }
+    else
+    {
+        $mysqli->query("UPDATE users SET `saved_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, '$', '$id') WHERE login = '$login' AND JSON_SEARCH(users.saved_timetables, 'one', '$id') IS NULL");
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
+    }
+}
+
+
+
 else if ($action == get_editable_timetables && $login != null && $session != null)
 {
     if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
@@ -446,9 +485,13 @@ else if ($action == get_editable_timetables && $login != null && $session != nul
 
 
 
-else if ($action == add_saved_timetable && $login != null && $session != null && $id != NULL)
+else if ($action == give_permission_edit_timetable && $login != null && $session != null && $id != NULL $user != null)
 {
     if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$user'")->num_rows == 0)
     {
         print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
     }
@@ -460,12 +503,18 @@ else if ($action == add_saved_timetable && $login != null && $session != null &&
     {
         print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
     }
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$user' AND JSON_SEARCH(users.saved_timetables, 'one', '$id') IS NOT NULL")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":14,\"message\":\"$error_messages_14\"}}"); 
+    }
     else
     {
-        $mysqli->query("UPDATE users SET `saved_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, '$', '$id') WHERE login = '$login' AND JSON_SEARCH(users.saved_timetables, 'one', '$id') IS NULL");
+        $mysqli->query("UPDATE users SET `editable_timetables` = JSON_ARRAY_APPEND(users.saved_timetables, '$', '$id') WHERE login = '$user' AND JSON_SEARCH(users.editable_timetables, 'one', '$id') IS NULL");
         print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
     }
 }
+
+
 
 
 
@@ -537,11 +586,6 @@ else if ($action == update_timetable && $login != null && $session != null && $i
         }
         else
         {   
-            
-            
-
-            
-
             // $path = $mysqli->query("SELECT JSON_UNQUOTE(JSON_SEARCH(users.sessions, 'one',)) FROM users WHERE login = '$login' AND JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\") IS NOT NULL");
 
             // while($e=$path->fetch_assoc())
