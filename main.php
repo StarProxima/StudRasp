@@ -123,7 +123,7 @@ if (isset($_POST["action"])) {
             $user = $_POST['user'];
         }
     }
-    else if ($action == "add_comment_timetable")
+    else if ($action == "add_comment")
     {
         if (isset($_POST["login"])) { 
             $login = $_POST['login'];
@@ -136,6 +136,30 @@ if (isset($_POST["action"])) {
         }
         if (isset($_POST["lessonIndex"])) { 
             $lessonIndex = $_POST['lessonIndex'];
+        }
+        if (isset($_POST["text"])) { 
+            $text = $_POST['text'];
+        }
+        if (isset($_POST["importance"])) { 
+            $importance = $_POST['importance'];
+        }
+    }
+    else if ($action == "edit_comment")
+    {
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
+        }
+        if (isset($_POST["session"])) { 
+            $session = $_POST['session'];
+        }
+        if (isset($_POST["id"])) { 
+            $id = $_POST['id'];
+        }
+        if (isset($_POST["lessonIndex"])) { 
+            $lessonIndex = $_POST['lessonIndex'];
+        }
+        if (isset($_POST["commentIndex"])) { 
+            $commentIndex = $_POST['commentIndex'];
         }
         if (isset($_POST["text"])) { 
             $text = $_POST['text'];
@@ -579,6 +603,38 @@ else if ($action == give_permission_edit_timetable && $login != null && $session
 
 
 
+else if ($action == add_comment && $login != null && $session != null && $id != NULL && $lessonIndex != NULL && $text != NULL && $importance != NULL)
+{
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM timetables WHERE id = $id")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":5,\"message\":\"$error_messages_5\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] != strval(0))
+    {
+        print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
+    }
+    else if($mysqli->query("SELECT users.my_timetables FROM users WHERE login =  '$login' AND JSON_CONTAINS(users.saved_timetables, JSON_ARRAY(\"$id\"))")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":7,\"message\":\"$error_messages_7\"}}");
+    }
+    else
+    {
+        $mysqli->query("UPDATE timetables SET `comments` = JSON_ARRAY_APPEND(timetables.comments, '$',".
+        "JSON_OBJECT('commentIndex',CONVERT(JSON_LENGTH(timetables.comments), CHAR),'lessonIndex', '$lessonIndex', 'comment', '$text', 'creator', '$login', 'creationDate', NOW(), 'lastUpdateDate', NOW(), 'importance', '$importance'))".
+        "WHERE id = $id");
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
+    }
+}
+
+
 
 
 
@@ -731,7 +787,7 @@ else if ($action == create_timetable && $login != null && $session != null)
         $invite_code = generate_random_unique_string(4);
         $mysqli->query("INSERT INTO timetables(`invite_code`, `name`, `json`, `info`, `comments`) VALUES ('$invite_code','Без имени','$default_json_timetable',".
         "JSON_OBJECT('name','Без имени','creator','$login','editors',JSON_ARRAY('$login'),'creationDate', NOW(),'lastUpdateDate', NOW(), 'lastUpdateInitiator','$login','regularUsers', 1),".
-        "JSON_ARRAY(JSON_OBJECT('lessonIndex', 0, 'comment', 'lolkek', 'creator', '$login', 'creationDate', NOW(), 'lastUpdateDate', NOW(), 'importance', 1)))");
+        "JSON_ARRAY(JSON_OBJECT('commentIndex','0','lessonIndex', '0', 'comment', 'lolkek', 'creator', '$login', 'creationDate', NOW(), 'lastUpdateDate', NOW(), 'importance', '1')))");
         
         $id = $mysqli->query("SELECT timetables.id FROM timetables WHERE id = LAST_INSERT_ID()")->fetch_array()["id"];
 
