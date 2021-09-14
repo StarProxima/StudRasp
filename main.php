@@ -273,6 +273,8 @@ $error_messages_11 = "Пользователь с такой почтой уже
 $error_messages_12 = "Аккаунт уже подтверждён.";
 $error_messages_13 = "Некорректный номер страницы поиска.";
 $error_messages_14 = "У данного пользователя не сохранено это расписание.";
+$error_messages_15 = "Такого номера пары не существует.";
+$error_messages_16 = "Такого номера комментария не существует.";
 
 
 
@@ -288,7 +290,7 @@ function update_session($login, $session)
     while($e=$path->fetch_assoc())
         $output[]=$e;
 
-    $path = substr($output[0]["JSON_UNQUOTE(JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\"))"], 0, 5);
+    $path = substr($output[0]["JSON_UNQUOTE(JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\"))"], 0, -8);
 
     $mysqli->query("UPDATE users SET users.sessions = JSON_SET(users.sessions, '".$path."session', '$hash_session') WHERE login = '$login' AND JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $session)."\") IS NOT NULL");
     $mysqli->query("UPDATE users SET users.sessions = JSON_SET(users.sessions, '".$path."last_update_date', NOW()) WHERE login = '$login' AND JSON_SEARCH(users.sessions, 'one',\"".hash('sha256', $rand_session)."\") IS NOT NULL");
@@ -630,6 +632,46 @@ else if ($action == add_comment && $login != null && $session != null && $id != 
         $mysqli->query("UPDATE timetables SET `comments` = JSON_ARRAY_APPEND(timetables.comments, '$',".
         "JSON_OBJECT('commentIndex',CONVERT(JSON_LENGTH(timetables.comments), CHAR),'lessonIndex', '$lessonIndex', 'comment', '$text', 'creator', '$login', 'creationDate', NOW(), 'lastUpdateDate', NOW(), 'importance', '$importance'))".
         "WHERE id = $id");
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
+    }
+}
+
+
+
+else if ($action == edit_comment && $login != null && $session != null && $id != NULL && $commentIndex != NULL && $text != NULL && $importance != NULL)
+{
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM timetables WHERE id = $id")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":5,\"message\":\"$error_messages_5\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] != strval(0))
+    {
+        print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
+    }
+    else if($mysqli->query("SELECT users.my_timetables FROM users WHERE login =  '$login' AND JSON_CONTAINS(users.saved_timetables, JSON_ARRAY(\"$id\"))")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":7,\"message\":\"$error_messages_7\"}}");
+    }
+    else
+    {
+        $path = $mysqli->query("SELECT JSON_UNQUOTE(JSON_SEARCH(timetables.comments, 'one', '$commentIndex', NULL,  '$[*].commentIndex')) FROM timetables WHERE id = $id AND JSON_SEARCH(timetables.comments, 'one', '$commentIndex', NULL,  '$[*].commentIndex') IS NOT NULL");
+        //var_dump($path);
+        while($e=$path->fetch_assoc())
+        $output[]=$e;
+
+        $path = substr($output[0]["JSON_UNQUOTE(JSON_SEARCH(timetables.comments, 'one', '$commentIndex', NULL,  '$[*].commentIndex'))"], 0, -12);
+        print($path);
+        $mysqli->query("UPDATE timetables SET `comments` = JSON_SET(timetables.comments, '".$path."comment', '$text') WHERE id = $id");
+        $mysqli->query("UPDATE timetables SET `comments` = JSON_SET(timetables.comments, '".$path."importance', '$importance') WHERE id = $id");
+        $mysqli->query("UPDATE timetables SET `comments` = JSON_SET(timetables.comments, '".$path."lastUpdateDate', NOW()) WHERE id = $id");
         print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
     }
 }
