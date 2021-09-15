@@ -704,6 +704,52 @@ else if ($action == edit_comment && $login != null && $session != null && $id !=
 
 
 
+else if ($action == delete_comment && $login != null && $session != null && $id != NULL && $commentIndex != NULL)
+{
+    if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM timetables WHERE id = $id")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":5,\"message\":\"$error_messages_5\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] != strval(0))
+    {
+        print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
+    }
+    else if($mysqli->query("SELECT users.my_timetables FROM users WHERE login =  '$login' AND JSON_CONTAINS(users.saved_timetables, JSON_ARRAY(\"$id\"))")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":7,\"message\":\"$error_messages_7\"}}");
+    }
+    else
+    {
+        $path = $mysqli->query("SELECT JSON_UNQUOTE(JSON_SEARCH(timetables.comments, 'one', '$commentIndex', NULL,  '$[*].commentIndex')) FROM timetables WHERE id = $id AND JSON_SEARCH(timetables.comments, 'one', '$commentIndex', NULL,  '$[*].commentIndex') IS NOT NULL");
+
+        while($e=$path->fetch_assoc())
+        $output[]=$e;
+
+        $path = substr($output[0]["JSON_UNQUOTE(JSON_SEARCH(timetables.comments, 'one', '$commentIndex', NULL,  '$[*].commentIndex'))"], 0, -13);
+
+        if($path)
+        {
+            $mysqli->query("UPDATE timetables SET `comments` = JSON_REMOVE(timetables.comments, '$path') WHERE id = $id");
+            print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}");
+        }
+        else
+        {
+            print("{\"error\":{\"code\":16,\"message\":\"$error_messages_16\"}}");
+        }
+            
+        
+    }
+}
+
+
 
 
 
