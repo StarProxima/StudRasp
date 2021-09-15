@@ -168,6 +168,24 @@ if (isset($_POST["action"])) {
             $importance = $_POST['importance'];
         }
     }
+    else if ($action == "delete_comment")
+    {
+        if (isset($_POST["login"])) { 
+            $login = $_POST['login'];
+        }
+        if (isset($_POST["session"])) { 
+            $session = $_POST['session'];
+        }
+        if (isset($_POST["id"])) { 
+            $id = $_POST['id'];
+        }
+        if (isset($_POST["lessonIndex"])) { 
+            $lessonIndex = $_POST['lessonIndex'];
+        }
+        if (isset($_POST["commentIndex"])) { 
+            $commentIndex = $_POST['commentIndex'];
+        }
+    }
     else if ($action == "get_timetable")
     {
         if (isset($_POST["id"])) { 
@@ -629,8 +647,16 @@ else if ($action == add_comment && $login != null && $session != null && $id != 
     }
     else
     {
+        $q = $mysqli->query("SELECT JSON_LENGTH(timetables.comments) FROM timetables WHERE id = $id");
+
+        while($e=$q->fetch_assoc())
+            $output[]=$e;
+
+        $lastCommentId = $output[0]["JSON_LENGTH(timetables.comments)"] - 1;
+
         $mysqli->query("UPDATE timetables SET `comments` = JSON_ARRAY_APPEND(timetables.comments, '$',".
-        "JSON_OBJECT('commentIndex',CONVERT(JSON_LENGTH(timetables.comments), CHAR),'lessonIndex', '$lessonIndex', 'comment', '$text', 'creator', '$login', 'creationDate', NOW(), 'lastUpdateDate', NOW(), 'importance', '$importance'))".
+        "JSON_OBJECT('commentIndex', CONVERT(JSON_UNQUOTE(JSON_EXTRACT(timetables.comments, '$[".$lastCommentId."].commentIndex')) + 1, CHAR) ,".
+        "'lessonIndex', '$lessonIndex', 'comment', '$text', 'creator', '$login', 'creationDate', NOW(), 'lastUpdateDate', NOW(), 'importance', '$importance'))".
         "WHERE id = $id");
         print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
     }
@@ -675,6 +701,7 @@ else if ($action == edit_comment && $login != null && $session != null && $id !=
         print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
     }
 }
+
 
 
 
