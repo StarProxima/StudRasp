@@ -365,7 +365,7 @@ if ($action == registration && $login != null && $password != null && $email != 
         $mysqli->query("INSERT INTO `users`(`login`,`password`,`email`,`sessions`,`auth_code`,`my_timetables`,`saved_timetables`) VALUES ('$login', '$hash_password', '$email','[]', '$auth_code', '[]', '[]')");
 
         if (mail($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["email"], 'Подтверждение аккаунта StudRasp', "Для завершения регистрации аккаунта \"".$login."\" перейдите по ссылке:".
-            "\rhttps://studrasp.ru/main.php?action=authentication&login=Star&auth_code=".$auth_code." \rИли введите код в приложении самостоятельно: ".$auth_code."\rЕсли вы не регистрировались в StudRasp,".
+            "\rhttps://studrasp.ru/main.php?action=authentication&login=".$login."&auth_code=".$auth_code." \rИли введите код в приложении самостоятельно: ".$auth_code."\rЕсли вы не регистрировались в StudRasp,".
             "то не сообщайте никому код и просто игнорируйте данное письмо.", 'From: registration@studrasp.ru', "-f registration@studrasp.ru")!=null)
         {
             print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".new_session($login)."\"}"); 
@@ -420,7 +420,7 @@ else if ($action == send_confirmation_email && $login != null && $session != nul
     {
         $auth_code = $mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"];
         if (mail($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["email"], 'Подтверждение аккаунта StudRasp', "Для завершения регистрации аккаунта \"".$login."\" перейдите по ссылке:".
-            "\rhttps://studrasp.ru/main.php?action=authentication&login=Star&auth_code=".$auth_code." \rИли введите код в приложении самостоятельно: ".$auth_code."\rЕсли вы не регистрировались в StudRasp,".
+            "\rhttps://studrasp.ru/main.php?action=authentication&login=".$login."&auth_code=".$auth_code." \rИли введите код в приложении самостоятельно: ".$auth_code."\rЕсли вы не регистрировались в StudRasp,".
             "то не сообщайте никому код и просто игнорируйте данное письмо.", 'From: registration@studrasp.ru', "-f registration@studrasp.ru")!=null)
         {
             print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
@@ -447,11 +447,10 @@ else if ($action == check_account_confirmation && $login != null && $session != 
     else if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"] != "0")
     {
         print("{\"error\":{\"code\":10,\"message\":\"$error_messages_10\"}}"); 
-        
     }
     else
     {
-        print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\",\"email\":\"".$mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["email"]."\"}"); 
     }
 }
 
@@ -470,7 +469,7 @@ else if ($action == authorization && $login != null && $password != null)
     else
     {
         $mysqli->query("UPDATE users SET session = \"$hash_session\" WHERE login = '$login' OR (email = '$login' AND auth_code = \"0\")");
-        print("{\"error\":{\"code\":0,\"message\":\"\"},\"login\":\"$login\",\"session\":\"".new_session($login)."\"}"); 
+        print("{\"error\":{\"code\":0,\"message\":\"\"},\"login\":\"$login\",\"session\":\"".new_session($login)."\",\"email\":\"".$mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["email"]."\"}"); 
     }
 }
 
