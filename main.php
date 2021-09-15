@@ -956,6 +956,7 @@ else if ($action == delete_timetable && $login != null && $session != null && $i
     {
         $mysqli->query("DELETE FROM timetables WHERE id = $id");
         $mysqli->query("UPDATE users SET my_timetables = JSON_REMOVE(users.my_timetables, JSON_UNQUOTE(JSON_SEARCH(users.my_timetables, 'one', '$id'))) WHERE json_search(users.my_timetables, 'one', '$id') IS NOT NULL");
+        $mysqli->query("UPDATE users SET editable_timetables = JSON_REMOVE(users.editable_timetables, JSON_UNQUOTE(JSON_SEARCH(users.editable_timetables, 'one', '$id'))) WHERE json_search(users.editable_timetables, 'one', '$id') IS NOT NULL");
         $mysqli->query("UPDATE users SET saved_timetables = JSON_REMOVE(users.saved_timetables, JSON_UNQUOTE(JSON_SEARCH(users.saved_timetables, 'one', '$id'))) WHERE json_search(users.saved_timetables, 'one', '$id') IS NOT NULL");
         print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
 
