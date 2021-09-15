@@ -155,9 +155,6 @@ if (isset($_POST["action"])) {
         if (isset($_POST["id"])) { 
             $id = $_POST['id'];
         }
-        if (isset($_POST["lessonIndex"])) { 
-            $lessonIndex = $_POST['lessonIndex'];
-        }
         if (isset($_POST["commentIndex"])) { 
             $commentIndex = $_POST['commentIndex'];
         }
@@ -178,9 +175,6 @@ if (isset($_POST["action"])) {
         }
         if (isset($_POST["id"])) { 
             $id = $_POST['id'];
-        }
-        if (isset($_POST["lessonIndex"])) { 
-            $lessonIndex = $_POST['lessonIndex'];
         }
         if (isset($_POST["commentIndex"])) { 
             $commentIndex = $_POST['commentIndex'];
@@ -654,10 +648,16 @@ else if ($action == add_comment && $login != null && $session != null && $id != 
 
         $lastCommentId = $output[0]["JSON_LENGTH(timetables.comments)"] - 1;
 
-        $mysqli->query("UPDATE timetables SET `comments` = JSON_ARRAY_APPEND(timetables.comments, '$',".
-        "JSON_OBJECT('commentIndex', CONVERT(JSON_UNQUOTE(JSON_EXTRACT(timetables.comments, '$[".$lastCommentId."].commentIndex')) + 1, CHAR) ,".
-        "'lessonIndex', '$lessonIndex', 'comment', '$text', 'creator', '$login', 'creationDate', NOW(), 'lastUpdateDate', NOW(), 'importance', '$importance'))".
-        "WHERE id = $id");
+        if($lastCommentId != -1)
+            $mysqli->query("UPDATE timetables SET `comments` = JSON_ARRAY_APPEND(timetables.comments, '$',".
+            "JSON_OBJECT('commentIndex', CONVERT(JSON_UNQUOTE(JSON_EXTRACT(timetables.comments, '$[".$lastCommentId."].commentIndex')) + 1, CHAR) ,".
+            "'lessonIndex', '$lessonIndex', 'comment', '$text', 'creator', '$login', 'creationDate', NOW(), 'lastUpdateDate', NOW(), 'importance', '$importance'))".
+            "WHERE id = $id");
+        else
+            $mysqli->query("UPDATE timetables SET `comments` = JSON_ARRAY_APPEND(timetables.comments, '$',".
+            "JSON_OBJECT('commentIndex', '0',".
+            "'lessonIndex', '$lessonIndex', 'comment', '$text', 'creator', '$login', 'creationDate', NOW(), 'lastUpdateDate', NOW(), 'importance', '$importance'))".
+            "WHERE id = $id"); 
         print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
     }
 }
