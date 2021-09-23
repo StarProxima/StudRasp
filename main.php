@@ -16,6 +16,15 @@ if (isset($_GET["action"]))
             $auth_code = $_GET['auth_code'];
         }
     }
+    else if ($action == "get_timetable")
+    {
+        if (isset($_GET["index"])) { 
+            $id = $_GET['index'];
+        }
+        if (isset($_GET["login"])) { 
+            $login = $_GET['login'];
+        }
+    }
 }
 
 if (isset($_POST["action"])) { 
@@ -287,6 +296,7 @@ $error_messages_13 = "Некорректный номер страницы по�
 $error_messages_14 = "У данного пользователя не сохранено это расписание.";
 $error_messages_15 = "Такого номера пары не существует.";
 $error_messages_16 = "Такого номера комментария не существует.";
+$error_messages_17 = "Превышен лимит созданных расписаний.";
 
 
 
@@ -362,7 +372,7 @@ if ($action == registration && $login != null && $password != null && $email != 
         
         $hash_password = hash('sha256', $password);
 
-        $mysqli->query("INSERT INTO `users`(`login`,`password`,`email`,`sessions`,`auth_code`,`my_timetables`,`saved_timetables`) VALUES ('$login', '$hash_password', '$email','[]', '$auth_code', '[]', '[]')");
+        $mysqli->query("INSERT INTO `users`(`login`,`password`,`email`,`sessions`,`auth_code`,`my_timetables`,`editable_timetables`,`saved_timetables`) VALUES ('$login', '$hash_password', '$email','[]', '$auth_code', '[]', '[]', '[]')");
 
         if (mail($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["email"], 'Подтверждение аккаунта StudRasp', "Для завершения регистрации аккаунта \"".$login."\" перейдите по ссылке:".
             "\rhttps://studrasp.ru/main.php?action=authentication&login=".$login."&auth_code=".$auth_code." \rИли введите код в приложении самостоятельно: ".$auth_code."\rЕсли вы не регистрировались в StudRasp,".
@@ -846,7 +856,7 @@ else if ($action == update_timetable && $login != null && $session != null && $i
     {
         print("{\"error\":{\"code\":5,\"message\":\"$error_messages_5\"}}"); 
     }
-    else if($mysqli->query("SELECT users.my_timetables FROM users WHERE login =  '$login' AND JSON_CONTAINS(users.my_timetables, JSON_ARRAY(\"$id\"))")->num_rows == 0)
+    else if($mysqli->query("SELECT users.editable_timetables FROM users WHERE login =  '$login' AND JSON_CONTAINS(users.editable_timetables, JSON_ARRAY(\"$id\"))")->num_rows == 0)
     {
         print("{\"error\":{\"code\":7,\"message\":\"$error_messages_7\"}}");
     }
@@ -894,6 +904,10 @@ else if ($action == create_timetable && $login != null && $session != null)
     else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_SEARCH(`sessions`, 'one', \"".hash('sha256', $session)."\") IS NOT NULL")->num_rows == 0)
     {
         print("{\"error\":{\"code\":4,\"message\":\"$error_messages_4\"}}"); 
+    }
+    else if ($mysqli->query("SELECT * FROM users WHERE login = '$login' AND JSON_LENGTH(users.my_timetables) < 10")->num_rows == 0)
+    {
+        print("{\"error\":{\"code\":17,\"message\":\"$error_messages_17\"}}"); 
     }
     else
     {
