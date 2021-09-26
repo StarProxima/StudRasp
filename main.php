@@ -335,10 +335,10 @@ function new_session($login)
 
 
 
-function generate_random_unique_string($length) {
+function generate_random_unique_invite_code($length) {
     global $mysqli, $error_messages_1, $error_messages_2,$error_messages_3, $error_messages_4, $error_messages_5, $error_messages_6, $error_messages_7, $error_messages_8, $error_messages_9, $error_messages_10, $error_messages_11, $error_messages_12, $error_messages_13;
 
-    $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $characters = '0123456789abcdefghijklmnopqrstuvwxyz';
     $characters_length = strlen($characters);
     $random_string = '';
     do
@@ -375,8 +375,8 @@ if ($action == registration && $login != null && $password != null && $email != 
         $mysqli->query("INSERT INTO `users`(`login`,`password`,`email`,`sessions`,`auth_code`,`my_timetables`,`editable_timetables`,`saved_timetables`) VALUES ('$login', '$hash_password', '$email','[]', '$auth_code', '[]', '[]', '[]')");
 
         if (mail($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["email"], 'Подтверждение аккаунта StudRasp', "Для завершения регистрации аккаунта \"".$login."\" перейдите по ссылке:".
-            "\rhttps://studrasp.ru/main.php?action=authentication&login=".$login."&auth_code=".$auth_code." \rИли введите код в приложении самостоятельно: ".$auth_code."\rЕсли вы не регистрировались в StudRasp,".
-            "то не сообщайте никому код и просто игнорируйте данное письмо.", 'From: registration@studrasp.ru', "-f registration@studrasp.ru")!=null)
+            "\rhttps://studrasp.ru/main.php?action=authentication&login=".$login."&auth_code=".$auth_code."\rЕсли вы не регистрировались в StudRasp,".
+            " то не сообщайте никому код и просто игнорируйте данное письмо.", 'From: registration@studrasp.ru', "-f registration@studrasp.ru")!=null)
         {
             print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"".new_session($login)."\"}"); 
         }
@@ -405,7 +405,7 @@ else if ($action == authentication && $login != null && $auth_code != null)
         else
         {
             $mysqli->query("UPDATE users SET auth_code = '0' WHERE login = '$login'");
-            print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}");
+            print("Ваш аккаунт \"".$login."\" подтверждён.");
         }
     }
 }
@@ -430,8 +430,8 @@ else if ($action == send_confirmation_email && $login != null && $session != nul
     {
         $auth_code = $mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["auth_code"];
         if (mail($mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["email"], 'Подтверждение аккаунта StudRasp', "Для завершения регистрации аккаунта \"".$login."\" перейдите по ссылке:".
-            "\rhttps://studrasp.ru/main.php?action=authentication&login=".$login."&auth_code=".$auth_code." \rИли введите код в приложении самостоятельно: ".$auth_code."\rЕсли вы не регистрировались в StudRasp,".
-            "то не сообщайте никому код и просто игнорируйте данное письмо.", 'From: registration@studrasp.ru', "-f registration@studrasp.ru")!=null)
+            "\rhttps://studrasp.ru/main.php?action=authentication&login=".$login."&auth_code=".$auth_code."\rЕсли вы не регистрировались в StudRasp,".
+            " то не сообщайте никому код и просто игнорируйте данное письмо.", 'From: registration@studrasp.ru', "-f registration@studrasp.ru")!=null)
         {
             print("{\"error\":{\"code\":0,\"message\":\"\"},\"session\":\"$session\"}"); 
         }
@@ -912,7 +912,7 @@ else if ($action == create_timetable && $login != null && $session != null)
     else
     {
         $default_json_timetable = "{   \"name\": \"Без имени\",    \"firstWeek\": \"\",    \"secondWeek\": \"\",    \"days\": [    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    }    ]    }";
-        $invite_code = generate_random_unique_string(4);
+        $invite_code = generate_random_unique_invite_code(4);
         $mysqli->query("INSERT INTO timetables(`invite_code`, `name`, `json`, `info`, `comments`) VALUES ('$invite_code','Без имени','$default_json_timetable',".
         "JSON_OBJECT('name','Без имени','creator','$login','editors',JSON_ARRAY('$login'),'creationDate', NOW(),'lastUpdateDate', NOW(), 'lastUpdateInitiator','$login','regularUsers', 1),".
         "JSON_ARRAY(JSON_OBJECT('commentIndex','0','lessonIndex', '0', 'comment', 'lolkek', 'creator', '$login', 'creationDate', NOW(), 'lastUpdateDate', NOW(), 'importance', '1')))");
