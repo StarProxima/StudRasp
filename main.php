@@ -4,6 +4,23 @@ $mysql_user = "rustamxa_timetable";
 $mysql_password = "timetable";
 $mysql_database = "rustamxa_timetable";
 
+$mysqli = new mysqli($mysql_host, $mysql_user, $mysql_password, $mysql_database);
+print($mysqli->connect_error);
+$mysqli->set_charset('utf-8');
+
+function fixSQLinjection($string)
+{
+    global $mysqli;
+    
+    $str = $string;
+    $str = str_replace(array(' ','(', ')', '}', '{', ']', '[','-'), '', $str);
+    $str = trim($str);
+    $str = $mysqli->real_escape_string($str);
+    $str = htmlspecialchars($str, ENT_QUOTES);
+
+    return $str;
+}
+
 if (isset($_GET["action"]))
 {
     $action = $_GET['action'];
@@ -271,14 +288,15 @@ if (isset($_POST["action"])) {
         }
     }
     
+    if(!is_numeric($id))
+        $id = -1;
+       
 
 }
 
 
 
-$mysqli = new mysqli($mysql_host, $mysql_user, $mysql_password, $mysql_database);
-print($mysqli->connect_error);
-$mysqli->set_charset('utf-8');
+
 
 $error_messages_1 = "Пользователь с таким логином уже существует.";
 $error_messages_2 = "Такого пользователя не существует.";
@@ -297,6 +315,7 @@ $error_messages_14 = "У данного пользователя не сохра
 $error_messages_15 = "Такого номера пары не существует.";
 $error_messages_16 = "Такого номера комментария не существует.";
 $error_messages_17 = "Превышен лимит созданных расписаний.";
+
 
 
 
@@ -391,6 +410,7 @@ if ($action == registration && $login != null && $password != null && $email != 
 
 else if ($action == authentication && $login != null && $auth_code != null)
 {
+    $email2 = $mysqli->query("SELECT * FROM users WHERE login = '$login'")->fetch_array()["email"];
     if ($mysqli->query("SELECT * FROM users WHERE login = '$login'")->num_rows == 0)
     {
         print("{\"error\":{\"code\":2,\"message\":\"$error_messages_2\"}}"); 
@@ -398,9 +418,9 @@ else if ($action == authentication && $login != null && $auth_code != null)
     else
     {
         //$hash_auth_code = hash('sha256',$auth_code);
-        if ($mysqli->query("SELECT * FROM users WHERE auth_code = '$auth_code'")->num_rows == 0 || $auth_code = "0")
+        if ($mysqli->query("SELECT * FROM users WHERE email = '$email2' AND auth_code = '0'")->num_rows != 0 || $auth_code = "0")
         {
-            print("{\"error\":{\"code\":8,\"message\":\"$error_messages_8\"}}"); 
+            print("Неправильный код аунтефикации или пользователь с такой почтой уже существует.");  
         }
         else
         {
@@ -764,6 +784,8 @@ else if ($action == delete_comment && $login != null && $session != null && $id 
 
 else if ($action == get_timetable && $id != null)
 {
+   
+    // print ($id);
     if ($mysqli->query("SELECT * FROM timetables WHERE id = $id")->num_rows == 0)
     {
         print("{\"error\":{\"code\":5,\"message\":\"$error_messages_5\"}}"); 
