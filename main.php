@@ -936,7 +936,7 @@ else if ($action == create_timetable && $login != null && $session != null)
         $default_json_timetable = "{   \"name\": \"Без имени\",    \"firstWeek\": \"\",    \"secondWeek\": \"\",    \"days\": [    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    },    {    \"lessons1\": [],    \"lessons2\": []    }    ]    }";
         $invite_code = generate_random_unique_invite_code(4);
         $mysqli->query("INSERT INTO timetables(`invite_code`, `name`, `json`, `info`, `comments`) VALUES ('$invite_code','Без имени','$default_json_timetable',".
-        "JSON_OBJECT('name','Без имени','creator','$login','editors',JSON_ARRAY('$login'),'creationDate', NOW(),'lastUpdateDate', NOW(), 'lastUpdateInitiator','$login','regularUsers', 1),".
+        "JSON_OBJECT('name','Без имени','creator','$login','editors',JSON_ARRAY('$login'),'creationDate', NOW(),'lastUpdateDate', NOW(), 'lastUpdateInitiator','$login','requestsAllTime', 0, 'requestsLastMonth', 0),".
         "JSON_ARRAY(JSON_OBJECT('commentIndex','0','lessonIndex', '0', 'comment', 'lolkek', 'creator', '$login', 'creationDate', NOW(), 'lastUpdateDate', NOW(), 'importance', '1')))");
         
         $id = $mysqli->query("SELECT timetables.id FROM timetables WHERE id = LAST_INSERT_ID()")->fetch_array()["id"];
