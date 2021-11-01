@@ -1049,16 +1049,18 @@ else if ($action == global_search_timetables && $page_number != NULL)
 
         if($tabs_per_page == NULL)
             $tabs_per_page = 20;
-
+            $mysqli->query("UPDATE `timetables` SET `info` = JSON_SET(timetables.info, '$.lastRequestDate', NOW()) WHERE id = $id");
+            
         switch($sort_type)
         {
             case "name":
                 $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
                 break;
-            case "requests_all_time":
-                $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY timetables.requests_all_time DESC LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
+            case "requestsAllTime":
+                $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY JSON_VALUE(timetables.info, '$.requestsAllTime') DESC LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
                 break;
-            case "requests_last_month":
+            case "requestsLastMonth":
+                $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY JSON_VALUE(timetables.info, '$.requestsLastMonth') DESC LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
                 break;
             default:
                 $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
