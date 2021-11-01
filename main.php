@@ -1044,20 +1044,20 @@ else if ($action == global_search_timetables && $page_number != NULL)
         if($tabs_per_page == NULL)
             $tabs_per_page = 20;
 
-        // switch($sort_type)
-        // {
-        //     case "name":
-        //         $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
-        //         break;
-        //     case "requests_all_time":
-        //         $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY timetables.requests_all_time DESC LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
-        //         break;
-        //     case "requests_last_month":
-        //         break;
-        //     default:
-        //         $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
-        //         break;
-        // }
+        switch($sort_type)
+        {
+            case "name":
+                $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
+                break;
+            case "requests_all_time":
+                $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY timetables.requests_all_time DESC LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
+                break;
+            case "requests_last_month":
+                break;
+            default:
+                $q = $mysqli->query("SELECT timetables.id, timetables.name FROM timetables WHERE timetables.name LIKE '$search_pattern' ORDER BY LENGTH(timetables.name), timetables.name LIMIT ".$page_number*$tabs_per_page.", $tabs_per_page");
+                break;
+        }
 
         while($e=$q->fetch_assoc())
             $output[]=$e;
